@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<meta name="theme-color" content="#0f172a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Eye FX Studio</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#000;color:#fff;font:14px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden}
+  .app{position:relative;height:100dvh;width:100%;overflow:hidden}
+  .stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .lens{position:relative;aspect-ratio:1/1;width:min(100vw,100dvh);border-radius:50%;overflow:hidden;background:#000;
+    box-shadow:inset 0 0 80px rgba(0,0,0,.8),inset 0 0 200px rgba(0,0,0,.5)}
+  video{width:100%;height:100%;object-fit:cover;transition:transform 120ms linear}
+  .vignette{position:absolute;inset:0;pointer-events:none}
+  .lid{position:absolute;left:0;right:0;background:#000;pointer-events:none;transition:height 120ms linear}
+  .lid.top{top:0;border-bottom-left-radius:50% 30%;border-bottom-right-radius:50% 30%}
+  .lid.bot{bottom:0;border-top-left-radius:50% 30%;border-top-right-radius:50% 30%}
+  .topbar{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:12px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.1);backdrop-filter:blur(8px);border:0;color:#fff;border-radius:999px;cursor:pointer}
+  .btn:active{transform:scale(.95)}
+  .icon{width:40px;height:40px;font-size:18px}
+  .pill{background:rgba(255,255,255,.1);backdrop-filter:blur(8px);padding:4px 12px;border-radius:999px;font-size:12px}
+  .rec-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:6px;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .bottom{position:absolute;left:0;right:0;bottom:0;z-index:20;display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 16px 24px}
+  .panel{width:100%;max-width:420px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border-radius:16px;padding:12px}
+  .row{display:flex;align-items:center;gap:10px;margin:6px 0}
+  .row label{flex:0 0 70px;font-size:12px;opacity:.8}
+  .row input[type=range]{flex:1;accent-color:#fff}
+  .row .val{flex:0 0 48px;text-align:right;font-size:12px;opacity:.7}
+  .controls{display:flex;align-items:center;justify-content:center;gap:24px}
+  .shutter{width:80px;height:80px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.1);backdrop-filter:blur(8px);color:#fff;font-size:24px}
+  .rec-btn{width:48px;height:48px}
+  .rec-btn.on{background:#dc2626}
+  .gallery,.preview{position:absolute;inset:0;z-index:30;background:#000;display:none;flex-direction:column}
+  .gallery.open,.preview.open{display:flex}
+  .gallery header,.preview header{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;overflow-y:auto}
+  .grid .cell{position:relative;aspect-ratio:1/1;background:rgba(255,255,255,.05);overflow:hidden;cursor:pointer;border:0;padding:0}
+  .grid .cell img,.grid .cell video{width:100%;height:100%;object-fit:cover}
+  .tag{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);padding:0 4px;font-size:10px;border-radius:3px}
+  .empty{flex:1;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:13px}
+  .preview .body{flex:1;display:flex;align-items:center;justify-content:center;padding:8px}
+  .preview .body img,.preview .body video{max-width:100%;max-height:100%}
+  .err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:#fca5a5;font-size:13px}
+  .danger{background:rgba(220,38,38,.8)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+    <div class="lens">
+      <video id="v" playsinline muted autoplay></video>
+      <div class="vignette" id="vignette"></div>
+      <div class="lid top" id="lidTop"></div>
+      <div class="lid bot" id="lidBot"></div>
+      <div class="err" id="err" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <button class="btn icon" id="openGallery" aria-label="Gallery">🖼</button>
+    <div class="pill" id="status">Eye FX</div>
+    <button class="btn icon" id="switchCam" aria-label="Switch">🔄</button>
+  </div>
+
+  <div class="bottom">
+    <div class="panel">
+      <div class="row"><label>Fisheye</label><input type="range" id="fisheye" min="0" max="100" value="40"><span class="val" id="fisheyeV">40</span></div>
+      <div class="row"><label>Iris zoom</label><input type="range" id="zoom" min="50" max="250" value="120"><span class="val" id="zoomV">120%</span></div>
+      <div class="row"><label>Eyelid</label><input type="range" id="eyelid" min="0" max="100" value="0"><span class="val" id="eyelidV">0</span></div>
+      <div class="row"><label>Rotation</label><input type="range" id="rot" min="-360" max="360" value="0"><span class="val" id="rotV">0°</span></div>
+    </div>
+    <div class="controls">
+      <button class="btn icon" id="togglePanel" aria-label="Toggle">⚙</button>
+      <button class="btn shutter" id="shoot" aria-label="Photo">📷</button>
+      <button class="btn icon rec-btn" id="rec" aria-label="Record">●</button>
+    </div>
+  </div>
+
+  <div class="gallery" id="gallery">
+    <header>
+      <h2 style="font-size:15px">Gallery</h2>
+      <button class="btn icon" id="closeGallery">✕</button>
+    </header>
+    <div id="galleryBody" class="empty">No captures yet</div>
+  </div>
+
+  <div class="preview" id="preview">
+    <header>
+      <button class="btn icon" id="closePreview">✕</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn icon" id="dl">⬇</button>
+        <button class="btn icon danger" id="del">🗑</button>
+      </div>
+    </header>
+    <div class="body" id="previewBody"></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const v = $("v");
+let stream = null, recorder = null, chunks = [], facing = "user";
+let captures = []; // {id,type,url,blob}
+let currentPreview = null;
+
+const state = { fisheye: 40, zoom: 120, eyelid: 0, rot: 0 };
+
+async function startCam() {
+  $("err").style.display = "none";
+  try {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: true,
+    });
+    v.srcObject = stream;
+    await v.play().catch(()=>{});
+    render();
+  } catch (e) {
+    $("err").textContent = (e && e.message) || "Camera unavailable. Grant permission and use HTTPS.";
+    $("err").style.display = "flex";
+  }
+}
+
+function render() {
+  const z = state.zoom / 100;
+  v.style.transform = `scale(${z}) rotate(${state.rot}deg)${facing==="user"?" scaleX(-1)":""}`;
+  const fs = state.fisheye / 100;
+  $("vignette").style.background = state.fisheye > 0
+    ? `radial-gradient(circle at 50% 50%, transparent ${60 - fs*30}%, rgba(0,0,0,${0.35 + fs*0.4}) 100%)`
+    : "none";
+  $("vignette").style.backdropFilter = `blur(${fs*2}px)`;
+  $("lidTop").style.height = (state.eyelid/2) + "%";
+  $("lidBot").style.height = (state.eyelid/2) + "%";
+}
+
+function bindSlider(id, key, fmt) {
+  const el = $(id), out = $(id+"V");
+  el.addEventListener("input", () => {
+    state[key] = +el.value;
+    out.textContent = fmt ? fmt(el.value) : el.value;
+    render();
+  });
+}
+bindSlider("fisheye","fisheye");
+bindSlider("zoom","zoom", x=>x+"%");
+bindSlider("eyelid","eyelid");
+bindSlider("rot","rot", x=>x+"°");
+
+$("switchCam").onclick = () => { facing = facing==="user"?"environment":"user"; startCam(); };
+$("togglePanel").onclick = () => {
+  const p = document.querySelector(".panel");
+  p.style.display = p.style.display === "none" ? "" : "none";
+};
+
+$("shoot").onclick = () => {
+  if (!v.videoWidth) return;
+  const size = Math.min(v.videoWidth, v.videoHeight);
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.save();
+  ctx.translate(size/2, size/2);
+  ctx.rotate(state.rot * Math.PI/180);
+  const z = state.zoom/100;
+  ctx.scale(facing==="user" ? -z : z, z);
+  const sx = (v.videoWidth - size)/2, sy = (v.videoHeight - size)/2;
+  ctx.drawImage(v, sx, sy, size, size, -size/2, -size/2, size, size);
+  ctx.restore();
+  if (state.eyelid > 0) {
+    const lid = (state.eyelid/100) * (size/2);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0,size,lid);
+    ctx.fillRect(0,size-lid,size,lid);
+  }
+  c.toBlob(b => { if (b) addCapture("image", b); }, "image/jpeg", 0.92);
+};
+
+$("rec").onclick = () => {
+  if (recorder) {
+    recorder.stop(); recorder = null;
+    $("rec").classList.remove("on");
+    $("status").innerHTML = "Eye FX";
+    return;
+  }
+  if (!stream) return;
+  chunks = [];
+  const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus"
+    : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus") ? "video/webm;codecs=vp8,opus" : "video/webm";
+  recorder = new MediaRecorder(stream, { mimeType: mime });
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.onstop = () => addCapture("video", new Blob(chunks, { type: mime }));
+  recorder.start();
+  $("rec").classList.add("on");
+  $("status").innerHTML = '<span class="rec-dot"></span>REC';
+};
+
+function addCapture(type, blob) {
+  const url = URL.createObjectURL(blob);
+  captures.unshift({ id: crypto.randomUUID(), type, url, blob, t: Date.now() });
+  renderGallery();
+}
+
+function renderGallery() {
+  const body = $("galleryBody");
+  if (!captures.length) {
+    body.className = "empty"; body.textContent = "No captures yet"; return;
+  }
+  body.className = "grid";
+  body.innerHTML = "";
+  captures.forEach(c => {
+    const btn = document.createElement("button");
+    btn.className = "cell";
+    btn.innerHTML = c.type === "image"
+      ? `<img src="${c.url}">`
+      : `<video src="${c.url}" muted></video><span class="tag">VIDEO</span>`;
+    btn.onclick = () => openPreview(c);
+    body.appendChild(btn);
+  });
+}
+
+function openPreview(c) {
+  currentPreview = c;
+  const body = $("previewBody");
+  body.innerHTML = c.type === "image"
+    ? `<img src="${c.url}">`
+    : `<video src="${c.url}" controls autoplay></video>`;
+  $("preview").classList.add("open");
+}
+
+$("openGallery").onclick = () => $("gallery").classList.add("open");
+$("closeGallery").onclick = () => $("gallery").classList.remove("open");
+$("closePreview").onclick = () => $("preview").classList.remove("open");
+$("dl").onclick = () => {
+  if (!currentPreview) return;
+  const a = document.createElement("a");
+  a.href = currentPreview.url;
+  a.download = `eyefx-${currentPreview.t}.${currentPreview.type==="image"?"jpg":"webm"}`;
+  a.click();
+};
+$("del").onclick = () => {
+  if (!currentPreview) return;
+  URL.revokeObjectURL(currentPreview.url);
+  captures = captures.filter(x => x.id !== currentPreview.id);
+  currentPreview = null;
+  $("preview").classList.remove("open");
+  renderGallery();
+};
+
+startCam();
+</script>
+</body>
+</html>

@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoCap Studio - Motion Capture & Character Integration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --bg-panel: #1a1f2e;
+            --accent-primary: #3b82f6;
+            --accent-secondary: #06b6d4;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border-color: #374151;
+            --border-light: #2d3748;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Layout */
+        .app-container {
+            display: grid;
+            grid-template-rows: 48px 1fr 180px;
+            height: 100vh;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .top-nav {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-btn {
+            padding: 6px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-success {
+            background: var(--accent-success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        /* Main Workspace */
+        .workspace {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            overflow: hidden;
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel:last-child {
+            border-right: none;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        /* Viewport */
+        .viewport-panel {
+            background: var(--bg-primary);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viewport-toolbar {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            background: rgba(17, 24, 39, 0.9);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            z-index: 10;
+        }
+
+        .viewport-tool {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .viewport-tool:hover, .viewport-tool.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .viewport-canvas-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #viewportCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .viewport-overlay {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .viewport-stats {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        /* Character List */
+        .character-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .character-item:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .character-item.active {
+            border-color: var(--accent-primary);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .character-thumb {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .character-info {
+            flex: 1;
+        }
+
+        .character-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .character-type {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .character-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-success);
+        }
+
+        /* Takes */
+        .take-item {
+            padding: 10px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .take-item:hover {
+            border-color: var(--accent-secondary);
+        }
+
+        .take-item.active {
+            border-color: var(--accent-secondary);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .take-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .take-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .take-duration {
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .take-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .take-bar {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .take-bar-fill {
+            height: 100%;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Timeline */
+        .timeline-panel {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 12px 16px;
+        }
+
+        .timeline-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .timeline-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .timeline-control {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .timeline-control:hover {
+            background: var(--border-color);
+        }
+
+        .time-display {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: var(--accent-secondary);
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .timeline-ruler {
+            height: 24px;
+            position: relative;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .timeline-ruler-marks {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--text-muted);
+            padding: 0 4px;
+        }
+
+        .timeline-tracks {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+        }
+
+        .timeline-track {
+            height: 32px;
+            background: var(--bg-panel);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timeline-track-label {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            color: var(--text-secondary);
+            z-index: 2;
+        }
+
+        .timeline-clip {
+            position: absolute;
+            height: 100%;
+            background: var(--accent-primary);
+            border-radius: 4px;
+            opacity: 0.8;
+            cursor: pointer;
+        }
+
+        .timeline-clip.cut {
+            background: var(--accent-danger);
+        }
+
+        .timeline-clip.add {
+            background: var(--accent-success);
+        }
+
+        .timeline-playhead {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--accent-warning);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .timeline-playhead::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            width: 10px;
+            height: 10px;
+            background: var(--accent-warning);
+            border-radius: 50%;
+        }
+
+        /* Properties Panel */
+        .property-group {
+            margin-bottom: 16px;
+        }
+
+        .property-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .property-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .property-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .property-value {
+            font-size: 12px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .property-input {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 120px;
+        }
+
+        .property-slider {
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 500px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        /* Import Grid */
+        .import-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .import-option {
+            padding: 20px;
+            background: var(--bg-panel);
+            border: 2px dashed var(--border-light);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .import-option:hover {
+            border-color: var(--accent-primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .import-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .import-label {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .import-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Recording Overlay */
+        .recording-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .recording-overlay.active {
+            display: flex;
+        }
+
+        .recording-camera {
+            width: 640px;
+            height: 480px;
+            background: var(--bg-panel);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid var(--border-color);
+        }
+
+        .recording-camera.recording {
+            border-color: var(--accent-danger);
+            animation: pulse-border 1s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: var(--accent-danger); }
+            50% { border-color: transparent; }
+        }
+
+        .camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        .camera-placeholder-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .skeleton-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .recording-controls {
+            margin-top: 24px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .record-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 4px solid var(--text-primary);
+            background: var(--accent-danger);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .record-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .record-btn.recording {
+            background: var(--text-primary);
+            border-color: var(--accent-danger);
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+        }
+
+        .recording-timer {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            color: var(--accent-danger);
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .recording-status {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        .recording-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--accent-danger);
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Skeleton Visualization */
+        .skeleton-viz {
+            position: absolute;
+            inset: 0;
+        }
+
+        .joint {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-secondary);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 4px var(--accent-secondary);
+        }
+
+        .bone {
+            position: absolute;
+            height: 2px;
+            background: var(--accent-secondary);
+            transform-origin: left center;
+            opacity: 0.7;
+        }
+
+        /* Status Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--accent-warning);
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent-primary);
+        }
+
+        /* Progress */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .empty-desc {
+            font-size: 12px;
+            max-width: 200px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 8px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 11px;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* Cut/Add Mode Indicator */
+        .mode-indicator {
+            position: absolute;
+            top: 56px;
+            right: 12px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 10;
+            display: none;
+        }
+
+        .mode-indicator.cut {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-danger);
+            border: 1px solid var(--accent-danger);
+        }
+
+        .mode-indicator.add {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-success);
+            border: 1px solid var(--accent-success);
+        }
+
+        .mode-indicator.active {
+            display: block;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s;
+            z-index: 1001;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification-icon {
+            font-size: 20px;
+        }
+
+        .notification-content {
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .workspace {
+                grid-template-columns: 240px 1fr 260px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="logo">
+                <div class="logo-icon">🎬</div>
+                <span>MoCap Studio</span>
+            </div>
+            <div class="top-nav">
+                <button class="nav-btn active" onclick="setMode('capture')">📹 Capture</button>
+                <button class="nav-btn" onclick="setMode('cut')">✂️ Cut</button>
+                <button class="nav-btn" onclick="setMode('add')">➕ Add Character</button>
+                <button class="nav-btn" onclick="setMode('preview')">👁 Preview</button>
+            </div>
+            <div class="top-actions">
+                <button class="btn btn-secondary btn-sm" onclick="showImportModal()">📁 Import</button>
+                <button class="btn btn-success btn-sm" onclick="showExportModal()">💾 Export</button>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="workspace">
+            <!-- Left Panel: Assets -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Assets</span>
+                    <button class="btn btn-sm" style="padding: 2px 8px;" onclick="showImportModal()">+</button>
+                </div>
+                <div class="panel-content" id="assetsPanel">
+                    <div class="property-group">
+                        <div class="property-label">Characters</div>
+                        <div id="characterList">
+                            <div class="character-item active" onclick="selectCharacter(this, 'human')">
+                                <div class="character-thumb">🧍</div>
+                                <div class="character-info">
+                                    <div class="character-name">Default Human</div>
+                                    <div class="character-type">Standard skeleton • 65 bones</div>
+                                </div>
+                                <div class="character-status"></div>
+                            </div>
+                            <div class="character-item" onclick="selectCharacter(this, 'stylized')">
+                                <div class="character-thumb">🦸</div>
+                                <div class="character-info">
+                                    <div class="character-name">Stylized Hero</div>
+                                    <div class="character-type">Toon proportions • 48 bones</div>
+                                </div>
+                                <div class="character-status" style="background: var(--text-muted);"></div>
+                            </div>
+                            <div class="character-item" onclick="selectCharacter(this, 'creature')">
+                                <div class="character-thumb">🐺</div>
+                                <div class="character-info">
+                                    <div class="character-name">Quadruped Beast</div>
+                                    <div class="character-type">Creature rig • 72 bones</div>
+                                </div>
+                                <div class="character-status" style="background: var(--text-muted);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="property-group">
+                        <div class="property-label">Motion Takes</div>
+                        <div id="takeList">
+                            <div class="take-item active" onclick="selectTake(this, 0)">
+                                <div class="take-header">
+                                    <span class="take-name">Take_01_WalkCycle</span>
+                                    <span class="take-duration">00:04:15</span>
+                                </div>
+                                <div class="take-meta">
+                                    <span class="badge badge-success">Tracked</span>
+                                    <span>24 fps</span>
+                                    <span>102 frames</span>
+                                </div>
+                                <div class="take-bar">
+                                    <div class="take-bar-fill" style="width: 100%;"></div>
+                                </div>
+                            </div>
+                            <div class="take-item" onclick="selectTake(this, 1)">
+                                <div class="take-header">
+                                    <span class="take-name">Take_02_Jump</span>
+                                    <span class="take-duration">00:02:30</span>
+                                </div>
+                                <div class="take-meta">
+                                    <span class="badge badge-warning">Processing</span>
+                                    <span>30 fps</span>
+                                    <span>75 frames</span>
+                                </div>
+                                <div class="take-bar">
+                                    <div class="take-bar-fill" style="width: 60%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel: Viewport -->
+            <div class="panel viewport-panel">
+                <div class="viewport-toolbar">
+                    <button class="viewport-tool active tooltip" data-tooltip="Select" onclick="setTool('select')">🔍</button>
+                    <button class="viewport-tool tooltip" data-tooltip="Move" onclick="setTool('move')">↔️</button>
+                    <button class="viewport-tool tooltip" data-tooltip="Rotate" onclick="setTool('rotate')">🔄</button>
+                    <button class="viewport-tool tooltip" data-tooltip="Scale" onclick="setTool('scale')">📐</button>
+                    <div style="width: 1px; background: var(--border-color); margin: 0 4px;"></div>
+                    <button class="viewport-tool tooltip" data-tooltip="Show Skeleton" onclick="toggleSkeleton()">🦴</button>
+                    <button class="viewport-tool tooltip" data-tooltip="Show Mesh" onclick="toggleMesh()">👤</button>
+                    <button class="viewport-tool tooltip" data-tooltip="Show Grid" onclick="toggleGrid()">⊞</button>
+                </div>
+
+                <div class="mode-indicator cut" id="cutModeIndicator">✂️ CUT MODE: Click to remove segments</div>
+                <div class="mode-indicator add" id="addModeIndicator">➕ ADD MODE: Select character to apply</div>
+
+                <div class="viewport-canvas-container">
+                    <canvas id="viewportCanvas"></canvas>
+                    <div class="viewport-overlay" id="viewportOverlay">
+                        <div>FPS: <span id="fpsDisplay">60</span></div>
+                        <div>Frame: <span id="frameDisplay">0</span>/102</div>
+                    </div>
+                    <div class="viewport-stats" id="viewportStats">
+                        <div>Vertices: 12,450</div>
+                        <div>Triangles: 24,892</div>
+                        <div>Bones: 65</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Properties -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Properties</span>
+                    <button class="btn btn-sm" style="padding: 2px 8px;">⚙</button>
+                </div>
+                <div class="panel-content" id="propertiesPanel">
+                    <div class="property-group">
+                        <div class="property-label">Retarget Settings</div>
+                        <div class="property-row">
+                            <span class="property-name">Source Skeleton</span>
+                            <span class="property-value">Humanoid (65)</span>
+                        </div>
+                        <div class="property-row">
+                            <span class="property-name">Target Skeleton</span>
+                            <span class="property-value" id="targetSkeleton">Default Human (65)</span>
+                        </div>
+                        <div class="property-row">
+                            <span class="property-name">Mapping Quality</span>
+                            <span class="badge badge-success">98% Match</span>
+                        </div>
+                        <div class="property-row">
+                            <span class="property-name">Auto-Retarget</span>
+                            <input type="checkbox" checked style="accent-color: var(--accent-primary);">
+                        </div>
+                    </div>
+
+                    <div class="property-group">
+                        <div class="property-label">Proportion Adjustment</div>
+                        <div class="property-row">
+                            <span class="property-name">Arm Length Scale</span>
+                            <span class="property-value">1.0</span>
+                        </div>
+                        <input type="range" class="property-slider" min="0.5" max="2" step="0.1" value="1" oninput="updateProportion(this, 'arm')">
+                        
+                        <div class="property-row" style="margin-top: 12px;">
+                            <span class="property-name">Leg Length Scale</span>
+                            <span class="property-value">1.0</span>
+                        </div>
+                        <input type="range" class="property-slider" min="0.5" max="2" step="0.1" value="1" oninput="updateProportion(this, 'leg')">
+                        
+                        <div class="property-row" style="margin-top: 12px;">
+                            <span class="property-name">Spine Scale</span>
+                            <span class="property-value">1.0</span>
+                        </div>
+                        <input type="range" class="property-slider" min="0.5" max="2" step="0.1" value="1" oninput="updateProportion(this, 'spine')">
+                    </div>
+
+                    <div class="property-group">
+                        <div class="property-label">Contact Points</div>
+                        <div class="property-row">
+                            <span class="property-name">Foot Lock</span>
+                            <input type="checkbox" checked style="accent-color: var(--accent-primary);">
+                        </div>
+                        <div class="property-row">
+                            <span class="property-name">Hand Lock</span>
+                            <input type="checkbox" style="accent-color: var(--accent-primary);">
+                        </div>
+                        <div class="property-row">
+                            <span class="property-name">Ground Offset</span>
+                            <input type="number" class="property-input" value="0.0" step="0.01">
+                        </div>
+                    </div>
+
+                    <div class="property-group">
+                        <div class="property-label">Skinning</div>
+                        <div class="property-row">
+                            <span class="property-name">Weight Algorithm</span>
+                            <select class="property-input" style="width: 140px;">
+                                <option>Heat Map</option>
+                                <option>Geodesic</option>
+                                <option>Paint-based</option>
+                            </select>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 85%;"></div>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Computing weights... 85%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline-panel">
+            <div class="timeline-toolbar">
+                <div class="timeline-controls">
+                    <button class="timeline-control" onclick="goToStart()">⏮</button>
+                    <button class="timeline-control" onclick="stepBack()">⏪</button>
+                    <button class="timeline-control" onclick="togglePlay()" id="playBtn">▶</button>
+                    <button class="timeline-control" onclick="stepForward()">⏩</button>
+                    <button class="timeline-control" onclick="goToEnd()">⏭</button>
+                </div>
+                <div class="time-display" id="timeDisplay">00:00:00</div>
+                <div style="flex: 1;"></div>
+                <button class="btn btn-sm btn-secondary" onclick="addCut()">✂️ Cut</button>
+                <button class="btn btn-sm btn-secondary" onclick="addCharacterSegment()">➕ Add Character</button>
+                <button class="btn btn-sm btn-secondary" onclick="clearSelection()">Clear</button>
+            </div>
+            
+            <div class="timeline-ruler">
+                <div class="timeline-ruler-marks">
+                    <span>00:00</span>
+                    <span>00:01</span>
+                    <span>00:02</span>
+                    <span>00:03</span>
+                    <span>00:04</span>
+                </div>
+            </div>
+            
+            <div class="timeline-tracks" id="timelineTracks">
+                <div class="timeline-track" style="position: relative;">
+                    <span class="timeline-track-label">Motion</span>
+                    <div class="timeline-clip" style="left: 0%; width: 100%;" onclick="selectClip(this)"></div>
+                    <div class="timeline-playhead" style="left: 0%;" id="playhead"></div>
+                </div>
+                <div class="timeline-track" style="position: relative;">
+                    <span class="timeline-track-label">Character</span>
+                    <div class="timeline-clip add" style="left: 0%; width: 100%;" onclick="selectClip(this)"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Import Assets</span>
+                <button class="modal-close" onclick="closeModal('importModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Choose what you want to import into your project.</p>
+                <div class="import-grid">
+                    <div class="import-option" onclick="importAsset('video')">
+                        <div class="import-icon">🎥</div>
+                        <div class="import-label">Video File</div>
+                        <div class="import-desc">MP4, MOV, AVI for motion extraction</div>
+                    </div>
+                    <div class="import-option" onclick="importAsset('character')">
+                        <div class="import-icon">👤</div>
+                        <div class="import-label">3D Character</div>
+                        <div class="import-desc">FBX, glTF, OBJ with rigging</div>
+                    </div>
+                    <div class="import-option" onclick="importAsset('motion')">
+                        <div class="import-icon">🏃</div>
+                        <div class="import-label">Motion Data</div>
+                        <div class="import-desc">BVH, FBX animation clip</div>
+                    </div>
+                    <div class="import-option" onclick="importAsset('sensor')">
+                        <div class="import-icon">📡</div>
+                        <div class="import-label">Sensor Data</div>
+                        <div class="import-desc">IMU, depth camera stream</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('importModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Export Animation</span>
+                <button class="modal-close" onclick="closeModal('exportModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="property-group">
+                    <div class="property-label">Format</div>
+                    <div class="property-row">
+                        <span class="property-name">FBX (.fbx)</span>
+                        <input type="radio" name="exportFormat" checked>
+                    </div>
+                    <div class="property-row">
+                        <span class="property-name">BVH (.bvh)</span>
+                        <input type="radio" name="exportFormat">
+                    </div>
+                    <div class="property-row">
+                        <span class="property-name">Video (.mp4)</span>
+                        <input type="radio" name="exportFormat">
+                    </div>
+                    <div class="property-row">
+                        <span class="property-name">Unreal Engine</span>
+                        <input type="radio" name="exportFormat">
+                    </div>
+                    <div class="property-row">
+                        <span class="property-name">Unity</span>
+                        <input type="radio" name="exportFormat">
+                    </div>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Settings</div>
+                    <div class="property-row">
+                        <span class="property-name">Frame Rate</span>
+                        <select class="property-input">
+                            <option>24 fps</option>
+                            <option selected>30 fps</option>
+                            <option>60 fps</option>
+                        </select>
+                    </div>
+                    <div class="property-row">
+                        <span class="property-name">Include Mesh</span>
+                        <input type="checkbox" checked>
+                    </div>
+                    <div class="property-row">
+                        <span class="property-name">Include Skeleton</span>
+                        <input type="checkbox" checked>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('exportModal')">Cancel</button>
+                <button class="btn btn-success" onclick="performExport()">Export</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recording Overlay -->
+    <div class="recording-overlay" id="recordingOverlay">
+        <div class="recording-camera" id="recordingCamera">
+            <div class="camera-placeholder" id="cameraPlaceholder">
+                <div class="camera-placeholder-icon">📷</div>
+                <div>Camera preview will appear here</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Click Start to begin motion capture</div>
+            </div>
+            <div class="skeleton-overlay" id="skeletonOverlay"></div>
+            <div class="recording-status" id="recordingStatus" style="display: none;">
+                <div class="recording-dot"></div>
+                <span style="font-size: 12px; color: white; font-weight: 600;">REC</span>
+            </div>
+        </div>
+        <div class="recording-controls">
+            <div class="recording-timer" id="recordingTimer">00:00</div>
+            <button class="record-btn" id="recordBtn" onclick="toggleRecording()"></button>
+            <button class="btn btn-secondary" onclick="closeRecording()">Close</button>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <span class="notification-icon" id="notifIcon">✅</span>
+        <span class="notification-content" id="notifContent">Operation completed</span>
+    </div>
+
+    <script>
+        // State
+        let currentMode = 'capture';
+        let currentTool = 'select';
+        let isPlaying = false;
+        let currentFrame = 0;
+        let totalFrames = 102;
+        let fps = 24;
+        let animationId = null;
+        let isRecording = false;
+        let recordingTime = 0;
+        let recordingInterval = null;
+        let showSkeleton = true;
+        let showMesh = true;
+        let showGrid = true;
+        let selectedCharacter = 'human';
+        let selectedTake = 0;
+
+        // Canvas setup
+        const canvas = document.getElementById('viewportCanvas');
+        const ctx = canvas.getContext('2d');
+        let canvasWidth, canvasHeight;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            canvasWidth = canvas.width;
+            canvasHeight = canvas.height;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            // Background
+            ctx.fillStyle = '#0a0e1a';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            
+            // Grid
+            if (showGrid) {
+                drawGrid();
+            }
+            
+            // Ground plane
+            drawGroundPlane();
+            
+            // Character
+            if (showMesh) {
+                drawCharacterMesh();
+            }
+            
+            // Skeleton
+            if (showSkeleton) {
+                drawSkeleton();
+            }
+            
+            // Update frame
+            if (isPlaying) {
+                currentFrame = (currentFrame + 1) % totalFrames;
+                updateTimeline();
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 1;
+            const spacing = 40;
+            const offsetX = (currentFrame * 2) % spacing;
+            
+            for (let x = offsetX; x < canvasWidth; x += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvasHeight);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y < canvasHeight; y += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvasWidth, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawGroundPlane() {
+            const groundY = canvasHeight * 0.75;
+            const centerX = canvasWidth / 2;
+            
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvasWidth, groundY);
+            ctx.stroke();
+            
+            // Perspective lines
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 1;
+            for (let i = -5; i <= 5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(centerX + i * 60, groundY);
+                ctx.lineTo(centerX + i * 200, canvasHeight);
+                ctx.stroke();
+            }
+        }
+
+        function drawCharacterMesh() {
+            const centerX = canvasWidth / 2;
+            const groundY = canvasHeight * 0.75;
+            const time = currentFrame / totalFrames * Math.PI * 2;
+            
+            // Simple character mesh based on selected type
+            ctx.save();
+            ctx.translate(centerX, groundY - 120);
+            
+            // Body sway
+            const sway = Math.sin(time * 2) * 5;
+            ctx.rotate(sway * Math.PI / 180);
+            
+            // Body
+            ctx.fillStyle = selectedCharacter === 'stylized' ? '#f59e0b' : 
+                           selectedCharacter === 'creature' ? '#7c3aed' : '#3b82f6';
+            ctx.fillRect(-20, -40, 40, 80);
+            
+            // Head
+            ctx.beginPath();
+            ctx.arc(0, -55, 18, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Arms
+            const armSwing = Math.sin(time * 4) * 20;
+            ctx.fillRect(-45, -35 + armSwing * 0.3, 20, 50);
+            ctx.fillRect(25, -35 - armSwing * 0.3, 20, 50);
+            
+            // Legs
+            const legSwing = Math.sin(time * 4) * 15;
+            ctx.fillRect(-18, 40 + legSwing, 14, 60);
+            ctx.fillRect(4, 40 - legSwing, 14, 60);
+            
+            ctx.restore();
+        }
+
+        function drawSkeleton() {
+            const centerX = canvasWidth / 2;
+            const groundY = canvasHeight * 0.75;
+            const time = currentFrame / totalFrames * Math.PI * 2;
+            
+            ctx.save();
+            ctx.translate(centerX, groundY - 120);
+            
+            const sway = Math.sin(time * 2) * 5;
+            ctx.rotate(sway * Math.PI / 180);
+            
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 2;
+            ctx.fillStyle = '#06b6d4';
+            
+            // Joints
+            const joints = [
+                {x: 0, y: -55}, // head
+                {x: 0, y: -40}, // neck
+                {x: 0, y: 0},   // spine
+                {x: -35, y: -30 + Math.sin(time * 4) * 10}, // left arm
+                {x: 35, y: -30 - Math.sin(time * 4) * 10},  // right arm
+                {x: -11, y: 50 + Math.sin(time * 4) * 15},  // left leg
+                {x: 11, y: 50 - Math.sin(time * 4) * 15},   // right leg
+            ];
+            
+            // Draw bones
+            ctx.beginPath();
+            ctx.moveTo(joints[0].x, joints[0].y);
+            ctx.lineTo(joints[1].x, joints[1].y);
+            ctx.lineTo(joints[2].x, joints[2].y);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(joints[1].x, joints[1].y);
+            ctx.lineTo(joints[3].x, joints[3].y);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(joints[1].x, joints[1].y);
+            ctx.lineTo(joints[4].x, joints[4].y);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(joints[2].x, joints[2].y);
+            ctx.lineTo(joints[5].x, joints[5].y);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(joints[2].x, joints[2].y);
+            ctx.lineTo(joints[6].x, joints[6].y);
+            ctx.stroke();
+            
+            // Draw joints
+            joints.forEach(j => {
+                ctx.beginPath();
+                ctx.arc(j.x, j.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            ctx.restore();
+        }
+
+        // Start animation
+        animate();
+
+        // Mode switching
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update indicators
+            document.getElementById('cutModeIndicator').classList.toggle('active', mode === 'cut');
+            document.getElementById('addModeIndicator').classList.toggle('active', mode === 'add');
+            
+            showNotification('🔄', `Switched to ${mode.charAt(0).toUpperCase() + mode.slice(1)} mode`);
+        }
+
+        // Tool switching
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.viewport-tool').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Toggles
+        function toggleSkeleton() {
+            showSkeleton = !showSkeleton;
+            showNotification('🦴', showSkeleton ? 'Skeleton visible' : 'Skeleton hidden');
+        }
+
+        function toggleMesh() {
+            showMesh = !showMesh;
+            showNotification('👤', showMesh ? 'Mesh visible' : 'Mesh hidden');
+        }
+
+        function toggleGrid() {
+            showGrid = !showGrid;
+            showNotification('⊞', showGrid ? 'Grid visible' : 'Grid hidden');
+        }
+
+        // Character selection
+        function selectCharacter(el, type) {
+            document.querySelectorAll('.character-item').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            selectedCharacter = type;
+            
+            const names = {
+                human: 'Default Human (65)',
+                stylized: 'Stylized Hero (48)',
+                creature: 'Quadruped Beast (72)'
+            };
+            document.getElementById('targetSkeleton').textContent = names[type];
+            
+            // Update stats
+            const stats = {
+                human: {v: '12,450', t: '24,892', b: '65'},
+                stylized: {v: '8,230', t: '16,440', b: '48'},
+                creature: {v: '15,680', t: '31,240', b: '72'}
+            };
+            const s = stats[type];
+            document.getElementById('viewportStats').innerHTML = `
+                <div>Vertices: ${s.v}</div>
+                <div>Triangles: ${s.t}</div>
+                <div>Bones: ${s.b}</div>
+            `;
+            
+            showNotification('👤', `Selected character: ${names[type]}`);
+        }
+
+        // Take selection
+        function selectTake(el, index) {
+            document.querySelectorAll('.take-item').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            selectedTake = index;
+            totalFrames = index === 0 ? 102 : 75;
+            currentFrame = 0;
+            updateTimeline();
+        }
+
+        // Timeline controls
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('playBtn').textContent = isPlaying ? '⏸' : '▶';
+        }
+
+        function stepBack() {
+            currentFrame = Math.max(0, currentFrame - 1);
+            updateTimeline();
+        }
+
+        function stepForward() {
+            currentFrame = Math.min(totalFrames - 1, currentFrame + 1);
+            updateTimeline();
+        }
+
+        function goToStart() {
+            currentFrame = 0;
+            updateTimeline();
+        }
+
+        function goToEnd() {
+            currentFrame = totalFrames - 1;
+            updateTimeline();
+        }
+
+        function updateTimeline() {
+            const progress = (currentFrame / totalFrames) * 100;
+            document.getElementById('playhead').style.left = progress + '%';
+            
+            const seconds = Math.floor(currentFrame / fps);
+            const frames = currentFrame % fps;
+            document.getElementById('timeDisplay').textContent = 
+                `00:00:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('frameDisplay').textContent = currentFrame;
+        }
+
+        function addCut() {
+            const track = document.getElementById('timelineTracks').children[0];
+            const clip = document.createElement('div');
+            clip.className = 'timeline-clip cut';
+            clip.style.left = (currentFrame / totalFrames * 100) + '%';
+            clip.style.width = '15%';
+            clip.onclick = function() { selectClip(this); };
+            track.appendChild(clip);
+            showNotification('✂️', 'Cut segment added at current frame');
+        }
+
+        function addCharacterSegment() {
+            const track = document.getElementById('timelineTracks').children[1];
+            const clip = document.createElement('div');
+            clip.className = 'timeline-clip add';
+            clip.style.left = (currentFrame / totalFrames * 100) + '%';
+            clip.style.width = '20%';
+            clip.onclick = function() { selectClip(this); };
+            track.appendChild(clip);
+            showNotification('➕', 'Character segment added');
+        }
+
+        function selectClip(el) {
+            document.querySelectorAll('.timeline-clip').forEach(c => c.style.opacity = '0.8');
+            el.style.opacity = '1';
+            el.style.border = '2px solid white';
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.timeline-clip').forEach(c => {
+                c.style.opacity = '0.8';
+                c.style.border = 'none';
+            });
+        }
+
+        // Modals
+        function showImportModal() {
+            document.getElementById('importModal').classList.add('active');
+        }
+
+        function showExportModal() {
+            document.getElementById('exportModal').classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function importAsset(type) {
+            closeModal('importModal');
+            const names = {
+                video: 'Video file',
+                character: '3D Character',
+                motion: 'Motion data',
+                sensor: 'Sensor data'
+            };
+            showNotification('📁', `Importing ${names[type]}...`);
+            setTimeout(() => {
+                showNotification('✅', `${names[type]} imported successfully!`);
+            }, 1500);
+        }
+
+        function performExport() {
+            closeModal('exportModal');
+            showNotification('💾', 'Preparing export...');
+            setTimeout(() => {
+                showNotification('✅', 'Export completed! File saved to Downloads.');
+            }, 2000);
+        }
+
+        // Recording
+        function showRecording() {
+            document.getElementById('recordingOverlay').classList.add('active');
+        }
+
+        function toggleRecording() {
+            isRecording = !isRecording;
+            const btn = document.getElementById('recordBtn');
+            const camera = document.getElementById('recordingCamera');
+            const status = document.getElementById('recordingStatus');
+            
+            if (isRecording) {
+                btn.classList.add('recording');
+                camera.classList.add('recording');
+                status.style.display = 'flex';
+                recordingTime = 0;
+                recordingInterval = setInterval(() => {
+                    recordingTime++;
+                    const mins = Math.floor(recordingTime / 60);
+                    const secs = recordingTime % 60;
+                    document.getElementById('recordingTimer').textContent = 
+                        `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                }, 1000);
+            } else {
+                btn.classList.remove('recording');
+                camera.classList.remove('recording');
+                status.style.display = 'none';
+                clearInterval(recordingInterval);
+                
+                // Create new take
+                const takeList = document.getElementById('takeList');
+                const newTake = document.createElement('div');
+                newTake.className = 'take-item fade-in';
+                newTake.onclick = function() { selectTake(this, 2); };
+                const duration = document.getElementById('recordingTimer').textContent;
+                newTake.innerHTML = `
+                    <div class="take-header">
+                        <span class="take-name">Take_0${takeList.children.length + 1}_Capture</span>
+                        <span class="take-duration">${duration}</span>
+                    </div>
+                    <div class="take-meta">
+                        <span class="badge badge-success">Tracked</span>
+                        <span>${fps} fps</span>
+                        <span>${recordingTime * fps} frames</span>
+                    </div>
+                    <div class="take-bar">
+                        <div class="take-bar-fill" style="width: 100%;"></div>
+                    </div>
+                `;
+                takeList.insertBefore(newTake, takeList.firstChild);
+                
+                showNotification('✅', `Recording saved: Take_0${takeList.children.length}_Capture`);
+            }
+        }
+
+        function closeRecording() {
+            if (isRecording) toggleRecording();
+            document.getElementById('recordingOverlay').classList.remove('active');
+            document.getElementById('recordingTimer').textContent = '00:00';
+        }
+
+        // Proportion updates
+        function updateProportion(slider, type) {
+            const value = parseFloat(slider.value);
+            slider.previousElementSibling.querySelector('.property-value').textContent = value.toFixed(1);
+        }
+
+        // Notification
+        function showNotification(icon, message) {
+            const notif = document.getElementById('notification');
+            document.getElementById('notifIcon').textContent = icon;
+            document.getElementById('notifContent').textContent = message;
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 3000);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            
+            switch(e.key) {
+                case ' ':
+                    e.preventDefault();
+                    togglePlay();
+                    break;
+                case 'r':
+                    if (e.ctrlKey) showRecording();
+                    break;
+                case 'i':
+                    if (e.ctrlKey) showImportModal();
+                    break;
+                case 'e':
+                    if (e.ctrlKey) showExportModal();
+                    break;
+                case 'ArrowLeft':
+                    stepBack();
+                    break;
+                case 'ArrowRight':
+                    stepForward();
+                    break;
+            }
+        });
+
+        // Initialize
+        updateTimeline();
+        showNotification('🎬', 'Welcome to MoCap Studio! Press Space to play/pause.');
+    </script>
+</body>
+</html>

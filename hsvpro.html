@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Hollywood Studio V2.5</title>
+
+<style>
+
+body{
+margin:0;
+background:#0d0324;
+color:white;
+font-family:sans-serif;
+overflow:scroll;
+}
+
+/* STAGE */
+
+#stage{
+position:fixed;
+width:97%;
+height:60%;
+right: 2%;
+background:rgba(0,0,0, 0.4);
+border-radius: 12px;
+display:flex;
+justify-content:center;
+align-items:center;
+perspective:1000px;
+overflow:hidden;
+}
+
+video,img{
+max-width:100%;
+max-height:94%;
+object-fit:contain;
+}
+
+/* VISUALIZER */
+
+#visualizer{
+position:fixed;
+bottom:35%;
+left: 16%;
+width:100%;
+height:60px;
+opacity: 0.78;
+}
+
+/* UI */
+
+#ui{
+position: absolute;
+bottom:15px;
+left:50%;
+width: 95%;
+transform:translateX(-50%);
+background:rgba(0,0,0, 0.3);
+padding:18px;
+border-radius:10px;
+display:flex;
+flex-wrap:wrap;
+gap:5px;
+}
+label{
+  font-style: italic;
+  font-size: 10px;
+  padding:8px;
+}
+input[type="file"]{display:none;}
+
+button,select,input, label{
+background:#070B40D6;
+color:white;
+border:none;
+padding:6px;
+border-radius:6px;
+}
+
+/* FILM GRAIN */
+
+#grain{
+pointer-events:none;
+position:fixed;
+width:100%;
+height:100%;
+background-image:url("https://grainy-gradients.vercel.app/noise.svg");
+opacity:0.2;
+mix-blend-mode:overlay;
+}
+h1{
+  font-size: 24px;
+  font-style: italic;
+  text-shadow: 2px 2px 5px #F41B80D6;
+}
+/* retro scanlines */
+.scanlines::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.05),
+    rgba(255,255,255,0.05) 1px,
+    transparent 2px,
+    transparent 4px
+  );
+  pointer-events:none;
+}
+
+/* glitch */
+.glitch{ animation:glitch 0.2s infinite; }
+@keyframes glitch{
+  0%{transform:translate(2px,-2px)}
+  50%{transform:translate(-2px,2px)}
+  100%{transform:translate(0)}
+}
+
+/* CHROMATIC ABERRATION */
+.chromatic-aberration {
+  filter: url(#chromaticFilter);
+}
+
+/* PRISMATIC LENS EFFECT */
+.prismatic {
+  filter: url(#prismaticFilter);
+}
+
+.prismatic-kaleidoscope {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(255,0,0,0.1) 0deg,
+    rgba(0,255,0,0.1) 60deg,
+    rgba(0,0,255,0.1) 120deg,
+    rgba(255,0,255,0.1) 180deg,
+    rgba(0,255,255,0.1) 240deg,
+    rgba(255,255,0,0.1) 300deg,
+    rgba(255,0,0,0.1) 360deg
+  );
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  border-radius: 12px;
+}
+
+.prismatic .prismatic-kaleidoscope {
+  opacity: 0.4;
+}
+
+/* TEXT */
+
+.pad{
+padding:8px 14px;
+  background: radial-gradient(circle at center,#00E6FF,#FF0190);
+border-radius:10px;
+cursor:pointer;
+font-weight:bold;
+}
+
+#padArea{
+position:absolute;
+bottom:-10%;
+left:50%;
+transform:translateX(-50%);
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+z-index:5;
+padding: 20px;
+}
+
+.fantasy{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:60px;
+font-weight:bold;
+animation:pop 6s forwards;
+pointer-events:none;
+}
+
+@keyframes pop{
+0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}
+30%{opacity:1;transform:translate(-50%,-50%) scale(1.4)}
+60%{transform:translate(-50%,-50%) scale(1)}
+100%{opacity:0;transform:translate(-50%,-50%) scale(.2)}
+}
+
+/* Slider styling */
+input[type="range"] {
+  width: 80px;
+  height: 6px;
+  padding: 0;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- SVG FILTERS FOR CHROMATIC ABERRATION & PRISMATIC -->
+<svg style="position:absolute;width:0;height:0;">
+  <defs>
+    <!-- Chromatic Aberration Filter -->
+    <filter id="chromaticFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feColorMatrix type="matrix" in="SourceGraphic" result="red"
+        values="1 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"/>
+      <feColorMatrix type="matrix" in="SourceGraphic" result="green"
+        values="0 0 0 0 0
+                0 1 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"/>
+      <feColorMatrix type="matrix" in="SourceGraphic" result="blue"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 1 0 0
+                0 0 0 1 0"/>
+      <!-- Red channel offset -->
+      <feOffset in="red" dx="4" dy="0" result="red-shifted"/>
+      <!-- Blue channel offset -->
+      <feOffset in="blue" dx="-4" dy="0" result="blue-shifted"/>
+      <!-- Blend all channels -->
+      <feBlend mode="screen" in="red-shifted" in2="green" result="rg"/>
+      <feBlend mode="screen" in="rg" in2="blue-shifted" result="final"/>
+    </filter>
+
+    <!-- Prismatic Lens Distortion Filter -->
+    <filter id="prismaticFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <!-- Radial distortion simulation -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="3" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="15" xChannelSelector="R" yChannelSelector="G" result="distorted"/>
+      <!-- Chromatic split for prismatic effect -->
+      <feColorMatrix type="matrix" in="distorted" result="red-p"
+        values="1 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"/>
+      <feColorMatrix type="matrix" in="distorted" result="green-p"
+        values="0 0 0 0 0
+                0 1 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"/>
+      <feColorMatrix type="matrix" in="distorted" result="blue-p"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 1 0 0
+                0 0 0 1 0"/>
+      <feOffset in="red-p" dx="6" dy="2" result="red-shifted-p"/>
+      <feOffset in="blue-p" dx="-6" dy="-2" result="blue-shifted-p"/>
+      <feBlend mode="screen" in="red-shifted-p" in2="green-p" result="rg-p"/>
+      <feBlend mode="screen" in="rg-p" in2="blue-shifted-p" result="final-p"/>
+      <!-- Add glow -->
+      <feGaussianBlur in="final-p" stdDeviation="1" result="glow"/>
+      <feBlend mode="screen" in="final-p" in2="glow"/>
+    </filter>
+
+    <!-- Animated Chromatic Filter (more intense) -->
+    <filter id="chromaticAnimated" x="-30%" y="-30%" width="160%" height="160%">
+      <feColorMatrix type="matrix" in="SourceGraphic" result="red-a"
+        values="1 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"/>
+      <feColorMatrix type="matrix" in="SourceGraphic" result="green-a"
+        values="0 0 0 0 0
+                0 1 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"/>
+      <feColorMatrix type="matrix" in="SourceGraphic" result="blue-a"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 1 0 0
+                0 0 0 1 0"/>
+      <feOffset in="red-a" dx="8" dy="2" result="red-shifted-a"/>
+      <feOffset in="blue-a" dx="-8" dy="-2" result="blue-shifted-a"/>
+      <feGaussianBlur in="red-shifted-a" stdDeviation="0.5" result="red-blur"/>
+      <feGaussianBlur in="blue-shifted-a" stdDeviation="0.5" result="blue-blur"/>
+      <feBlend mode="screen" in="red-blur" in2="green-a" result="rg-a"/>
+      <feBlend mode="screen" in="rg-a" in2="blue-blur" result="final-a"/>
+    </filter>
+  </defs>
+</svg>
+
+<hr>
+<hr>
+<h1>🎥 ABSOLUTE VIDEO STUDIO 🎞️</h1>
+<div id="stage" class="scanlines">
+
+<video id="video" controls></video>
+<img id="slideshow">
+<div class="prismatic-kaleidoscope"></div>
+
+</div>
+
+<canvas id="visualizer"></canvas>
+ <canvas id="exportCanvas" style="display:none"></canvas>
+<canvas id="recordCanvas" style="display:none"></canvas>
+
+<div id="grain"></div>
+
+<div id="ui">
+<label for="videoUpload">🎞️ VIDEO IMPORT 🎬
+<input type="file" id="videoUpload" accept="video/*">
+</label>
+<label for="imageUpload">🖼️ IMAGE IMPORT 🌌
+<input type="file" id="imageUpload" accept="image/*" multiple>
+</label>
+<label for="musicUpload">🎶 MUSIC IMPORT🎵
+<input type="file" id="musicUpload" accept="audio/*">
+</label>
+<select id="tone">
+<option value="none">Tone Normal</option>
+<option value="cinema">Cinema</option>
+<option value="warm">Warm</option>
+<option value="cool">Cool</option>
+<option value="vintage">Vintage</option>
+</select>
+
+<select id="filter">
+<option value="none">Filter None</option>
+<option value="grayscale">Grayscale</option>
+<option value="sepia">Sepia</option>
+<option value="invert">Invert</option>
+<option value="auto">Auto Color</option>
+</select>
+<button onclick="toggleRetro()">Retro</button>
+  <button onclick="toggleGlitch()">Glitch</button>
+<select id="transition">
+<option value="zoom">Zoom Pop</option>
+<option value="slide">Wave Slide</option>
+<option value="spin">Spin Twist</option>
+<option value="bounce">Bass Bounce</option>
+</select>
+
+<button id="beatToggle">Beat FX</button>
+<button id="zoomBtn">Zoom</button>
+<button id="shakeBtn">Shake</button>
+<button id="tiltBtn">Tilt</button>
+<button id="addPad">Add Text Pad</button>
+
+<!-- NEW CHROMATIC & PRISMATIC CONTROLS -->
+<button id="chromaticBtn">Chromatic</button>
+<button id="prismaticBtn">Prismatic</button>
+<label>CA Intensity: <input type="range" id="caIntensity" min="0" max="20" value="4"></label>
+<label>Prism Intensity: <input type="range" id="prismIntensity" min="0" max="30" value="15"></label>
+
+<button id="recBtn">Start Recording</button>
+<button id="stopBtn">Stop</button>
+<button id="downloadBtn">Download</button>
+<button id="downloadBtn1">Download Frame</button>
+
+</div>
+    
+<hr>
+<hr>
+<div id="padArea"></div>
+<script>
+
+/* ELEMENTS */
+const container=document.getElementById("stage");
+const video=document.getElementById("video")
+const slideshow=document.getElementById("slideshow")
+let canvas = document.getElementById("exportCanvas")
+    let ctx = canvas.getContext("2d")
+
+const visualizer=document.getElementById("visualizer")
+const vctx=visualizer.getContext("2d")
+
+const recordCanvas=document.getElementById("recordCanvas")
+const rctx=recordCanvas.getContext("2d")
+
+visualizer.width=window.innerWidth
+visualizer.height=60
+
+recordCanvas.width=window.innerWidth
+recordCanvas.height=window.innerHeight
+
+/* STATE */
+
+let zoom=false
+let shake=false
+let tilt=false
+let beatEnabled=false
+
+let images=[]
+let slideIndex=0
+
+let autoZoom=1
+let hue=0
+
+let transitionType="zoom"
+let transitionProgress=0
+
+let currentTone="none"
+let currentFilter="none"
+
+/* NEW: CHROMATIC & PRISMATIC STATE */
+let chromaticEnabled = false
+let prismaticEnabled = false
+let caIntensity = 4
+let prismIntensity = 15
+
+/* AUDIO */
+
+let audioCtx
+let analyser
+let dataArray
+
+let music=new Audio()
+
+/* RECORDER */
+
+let recorder
+let chunks=[]
+
+/* UI */
+
+tone.onchange=e=>currentTone=e.target.value
+filter.onchange=e=>currentFilter=e.target.value
+transition.onchange=e=>transitionType=e.target.value
+
+zoomBtn.onclick=()=>zoom=!zoom
+shakeBtn.onclick=()=>shake=!shake
+tiltBtn.onclick=()=>tilt=!tilt
+
+/* NEW: CHROMATIC ABERRATION TOGGLE */
+chromaticBtn.onclick = () => {
+  chromaticEnabled = !chromaticEnabled
+  chromaticBtn.style.background = chromaticEnabled ? '#F41B80' : '#070B40D6'
+  updateFilters()
+}
+
+/* NEW: PRISMATIC TOGGLE */
+prismaticBtn.onclick = () => {
+  prismaticEnabled = !prismaticEnabled
+  prismaticBtn.style.background = prismaticEnabled ? '#00E6FF' : '#070B40D6'
+  container.classList.toggle('prismatic', prismaticEnabled)
+  updateFilters()
+}
+
+/* NEW: INTENSITY SLIDERS */
+caIntensity.oninput = (e) => {
+  caIntensity = parseInt(e.target.value)
+  updateChromaticFilter()
+}
+
+prismIntensity.oninput = (e) => {
+  prismIntensity = parseInt(e.target.value)
+  updatePrismaticFilter()
+}
+
+/* UPDATE SVG FILTER DYNAMICS */
+function updateChromaticFilter() {
+  const filter = document.getElementById('chromaticFilter')
+  const offsets = filter.querySelectorAll('feOffset')
+  offsets[0].setAttribute('dx', caIntensity)
+  offsets[0].setAttribute('dy', caIntensity * 0.3)
+  offsets[1].setAttribute('dx', -caIntensity)
+  offsets[1].setAttribute('dy', -caIntensity * 0.3)
+}
+
+function updatePrismaticFilter() {
+  const filter = document.getElementById('prismaticFilter')
+  const disp = filter.querySelector('feDisplacementMap')
+  disp.setAttribute('scale', prismIntensity)
+  const offsets = filter.querySelectorAll('feOffset')
+  offsets[3].setAttribute('dx', prismIntensity * 0.4)
+  offsets[3].setAttribute('dy', prismIntensity * 0.15)
+  offsets[4].setAttribute('dx', -prismIntensity * 0.4)
+  offsets[4].setAttribute('dy', -prismIntensity * 0.15)
+}
+
+function updateFilters() {
+  let filterClasses = []
+  if (chromaticEnabled) filterClasses.push('chromatic-aberration')
+  if (prismaticEnabled) filterClasses.push('prismatic')
+  
+  // Apply to both video and slideshow
+  video.className = filterClasses.join(' ')
+  slideshow.className = filterClasses.join(' ')
+}
+
+/* MUSIC UPLOAD */
+
+musicUpload.onchange=e=>{
+
+let file=e.target.files[0]
+
+music.src=URL.createObjectURL(file)
+
+music.play()
+
+if(!audioCtx){
+
+audioCtx=new AudioContext()
+
+let src=audioCtx.createMediaElementSource(music)
+
+analyser=audioCtx.createAnalyser()
+
+src.connect(analyser)
+analyser.connect(audioCtx.destination)
+
+analyser.fftSize=128
+
+dataArray=new Uint8Array(analyser.frequencyBinCount)
+
+}
+
+}
+
+/* VIDEO */
+
+videoUpload.onchange=e=>{
+
+let file=e.target.files[0]
+
+video.src=URL.createObjectURL(file)
+
+video.style.display="block"
+slideshow.style.display="none"
+
+}
+
+/* SLIDESHOW */
+
+imageUpload.onchange=e=>{
+
+images=[...e.target.files]
+
+if(images.length)showSlide()
+
+}
+
+function showSlide(){
+
+let url=URL.createObjectURL(images[slideIndex])
+
+slideshow.src=url
+
+video.style.display="none"
+slideshow.style.display="block"
+
+transitionProgress=1
+
+slideIndex++
+if(slideIndex>=images.length)slideIndex=0
+
+setTimeout(showSlide,4000)
+
+}
+
+/* ===============================
+   EFFECT TOGGLES
+================================*/
+function toggleRetro(){ container.classList.toggle("scanlines"); }
+function toggleGlitch(){ container.classList.toggle("glitch"); }
+
+/* COLOR */
+
+function getTone(){
+
+switch(currentTone){
+
+case "cinema":
+return "contrast(125%) saturate(128%) brightness(105%)"
+
+case "warm":
+return "sepia(30%) saturate(140%)"
+
+case "cool":
+return "hue-rotate(200deg)"
+
+case "vintage":
+return "sepia(35%) contrast(115%) brightness(95%)"
+
+default:return ""
+
+}
+
+}
+
+function getFilter(){
+
+switch(currentFilter){
+
+case "grayscale":return "grayscale(100%)"
+case "sepia":return "sepia(100%)"
+case "invert":return "invert(100%)"
+case "auto":
+hue+=1
+return `hue-rotate(${hue}deg)`
+
+default:return ""
+
+}
+
+}
+
+
+/* TEXT PADS */
+
+addPad.onclick=()=>{
+
+let txt=prompt("Text")
+
+if(!txt)return
+
+let pad=document.createElement("div")
+
+pad.className="pad"
+
+pad.textContent=txt
+
+pad.onclick=()=>{
+
+let t=document.createElement("div")
+
+t.className="fantasy"
+
+t.textContent=txt
+
+t.style.color=`hsl(${Math.random()*360},70%,50%)`
+
+document.body.appendChild(t)
+
+setTimeout(()=>t.remove(),6000)
+
+}
+
+padArea.appendChild(pad)
+
+}
+
+
+/* RECORDING */
+
+recBtn.onclick=()=>{
+
+let stream=recordCanvas.captureStream(30)
+
+recorder=new MediaRecorder(stream)
+
+recorder.ondataavailable=e=>chunks.push(e.data)
+
+recorder.start()
+
+}
+
+stopBtn.onclick=()=>recorder.stop()
+
+recorder?.onstop
+
+downloadBtn.onclick=()=>{
+
+let blob=new Blob(chunks,{type:"video/webm"})
+let url=URL.createObjectURL(blob)
+
+let a=document.createElement("a")
+a.href=url
+a.download="hollywood_studio.webm"
+a.click()
+
+}
+
+/* MAIN LOOP */
+
+function render(){
+
+requestAnimationFrame(render)
+
+let target=video.style.display==="block"?video:slideshow
+
+/* BEAT */
+
+let beatPower=0
+
+if(analyser){
+
+analyser.getByteFrequencyData(dataArray)
+
+let sum=0
+
+for(let i=0;i<10;i++)sum+=dataArray[i]
+
+beatPower=sum/10
+
+}
+
+/* AUTO ZOOM */
+
+autoZoom=1+Math.sin(Date.now()/2000)*0.05
+
+/* SHAKE */
+
+let shakeX=shake?(Math.random()-.5)*10:0
+let shakeY=shake?(Math.random()-.5)*10:0
+
+/* TILT */
+
+let tiltX=tilt?Math.sin(Date.now()/600)*10:0
+let tiltY=tilt?Math.cos(Date.now()/700)*10:0
+
+/* TRANSITION */
+
+if(transitionProgress>0)
+transitionProgress-=0.03
+
+let scale=0.8
+let rot=0
+let tx=0
+let ty=0
+
+if(transitionType==="zoom")
+scale=0.8+transitionProgress
+
+if(transitionType==="slide")
+tx=transitionProgress*300
+
+if(transitionType==="spin")
+rot=transitionProgress*5
+
+if(transitionType==="bounce")
+ty=Math.sin(Date.now()/200)*beatPower/3
+
+/* BEAT ZOOM */
+
+let beatZoom=1+beatPower/350
+
+target.style.transform=
+
+`
+translate(${tx+shakeX}px,${ty+shakeY}px)
+rotate(${rot}deg)
+rotateX(${tiltX}deg)
+rotateY(${tiltY}deg)
+scale(${(zoom?1.2:1)*autoZoom*scale*beatZoom})
+`
+
+target.style.filter=getTone()+" "+getFilter()
+
+/* VISUALIZER */
+
+if(analyser){
+
+vctx.clearRect(0,0,visualizer.width,visualizer.height)
+
+let barWidth=visualizer.width/dataArray.length
+
+for(let i=0;i<dataArray.length;i++){
+
+let h=dataArray[i]/2
+
+vctx.fillStyle=`hsl(${i*5},100%,50%)`
+
+vctx.fillRect(
+i*barWidth,
+visualizer.height-h,
+barWidth-2,
+h
+)
+
+}
+
+}
+
+/* RECORD CANVAS */
+
+rctx.clearRect(0,0,recordCanvas.width,recordCanvas.height)
+
+rctx.drawImage(target,
+recordCanvas.width/2-target.width/2,
+recordCanvas.height/2-target.height/2)
+
+rctx.drawImage(visualizer,0,recordCanvas.height-60)
+
+}
+
+render()
+ /* EXPORT */
+    
+    downloadBtn1.onclick = () => {
+      
+      let target = video.src ? video : slideshow
+      
+      canvas.width = target.videoWidth || target.naturalWidth
+      canvas.height = target.videoHeight || target.naturalHeight
+      
+      ctx.filter = target.style.filter
+      
+      ctx.drawImage(target, 0, 0, canvas.width, canvas.height)
+      
+      // Apply chromatic aberration to canvas export if enabled
+      if (chromaticEnabled) {
+        applyCanvasChromatic(canvas, ctx, caIntensity)
+      }
+      
+      // Apply prismatic distortion to canvas export if enabled
+      if (prismaticEnabled) {
+        applyCanvasPrismatic(canvas, ctx, prismIntensity)
+      }
+      
+      let link = document.createElement("a")
+      
+      link.download = "studio-export.png"
+      
+      link.href = canvas.toDataURL()
+      
+      link.click()
+      
+    }
+
+/* CANVAS CHROMATIC ABERRATION */
+function applyCanvasChromatic(canvas, ctx, intensity) {
+  const w = canvas.width
+  const h = canvas.height
+  
+  // Get image data
+  const imgData = ctx.getImageData(0, 0, w, h)
+  const data = imgData.data
+  
+  // Create temporary canvas for channel separation
+  const tempCanvas = document.createElement('canvas')
+  tempCanvas.width = w
+  tempCanvas.height = h
+  const tempCtx = tempCanvas.getContext('2d')
+  
+  // Draw original
+  tempCtx.drawImage(canvas, 0, 0)
+  
+  // Clear and redraw with channel offsets
+  ctx.clearRect(0, 0, w, h)
+  ctx.globalCompositeOperation = 'screen'
+  
+  // Red channel (offset right)
+  ctx.drawImage(tempCanvas, intensity, intensity * 0.3)
+  const redData = ctx.getImageData(0, 0, w, h)
+  
+  // Reset and draw green
+  ctx.clearRect(0, 0, w, h)
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.drawImage(tempCanvas, 0, 0)
+  const greenData = ctx.getImageData(0, 0, w, h)
+  
+  // Blue channel (offset left)
+  ctx.clearRect(0, 0, w, h)
+  ctx.globalCompositeOperation = 'screen'
+  ctx.drawImage(tempCanvas, -intensity, -intensity * 0.3)
+  const blueData = ctx.getImageData(0, 0, w, h)
+  
+  // Composite channels
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = redData.data[i]     // R
+    data[i + 1] = greenData.data[i + 1] // G
+    data[i + 2] = blueData.data[i + 2]  // B
+    data[i + 3] = 255
+  }
+  
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.putImageData(imgData, 0, 0)
+}
+
+/* CANVAS PRISMATIC DISTORTION */
+function applyCanvasPrismatic(canvas, ctx, intensity) {
+  const w = canvas.width
+  const h = canvas.height
+  
+  const imgData = ctx.getImageData(0, 0, w, h)
+  const data = imgData.data
+  const newData = ctx.createImageData(w, h)
+  
+  const cx = w / 2
+  const cy = h / 2
+  
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dx = x - cx
+      const dy = y - cy
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      const maxDist = Math.sqrt(cx * cx + cy * cy)
+      const normDist = dist / maxDist
+      
+      // Radial displacement
+      const displacement = intensity * normDist * normDist
+      
+      // Calculate source positions for each channel
+      const angle = Math.atan2(dy, dx)
+      
+      // Red channel - displaced outward
+      const rDist = dist + displacement
+      const rX = Math.round(cx + Math.cos(angle) * rDist)
+      const rY = Math.round(cy + Math.sin(angle) * rDist)
+      
+      // Blue channel - displaced inward
+      const bDist = dist - displacement * 0.5
+      const bX = Math.round(cx + Math.cos(angle) * bDist)
+      const bY = Math.round(cy + Math.sin(angle) * bDist)
+      
+      const i = (y * w + x) * 4
+      
+      // Sample red from displaced position
+      if (rX >= 0 && rX < w && rY >= 0 && rY < h) {
+        const rI = (rY * w + rX) * 4
+        newData.data[i] = data[rI]
+      }
+      
+      // Sample green from original position
+      if (x >= 0 && x < w && y >= 0 && y < h) {
+        newData.data[i + 1] = data[i + 1]
+      }
+      
+      // Sample blue from displaced position
+      if (bX >= 0 && bX < w && bY >= 0 && bY < h) {
+        const bI = (bY * w + bX) * 4
+        newData.data[i + 2] = data[bI + 2]
+      }
+      
+      newData.data[i + 3] = 255
+    }
+  }
+  
+  ctx.putImageData(newData, 0, 0)
+}
+</script>
+
+</body>
+</html>

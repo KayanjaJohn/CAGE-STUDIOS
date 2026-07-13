@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Hollywood Studio V3</title>
+<style>
+body{margin:0;background:#0d0324;color:white;font-family:sans-serif;overflow:scroll;}
+#stage{position:fixed;width:97%;height:60%;right:2%;background:rgba(0,0,0,0.4);border-radius:12px;display:flex;justify-content:center;align-items:center;perspective:1000px;}
+video,img{max-width:100%;max-height:94%;object-fit:contain;}
+#visualizer{position:fixed;bottom:35%;left:16%;width:100%;height:60px;opacity:0.78;}
+#ui{position:absolute;bottom:15px;left:50%;width:95%;transform:translateX(-50%);background:rgba(0,0,0,0.3);padding:18px;border-radius:10px;display:flex;flex-wrap:wrap;gap:5px;transition:opacity 0.5s ease,transform 0.5s ease;}
+#ui.hidden-ui{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(30px);}
+label{font-style:italic;font-size:10px;padding:8px;}
+input[type="file"]{display:none;}
+button,select,input,label{background:#070B40D6;color:white;border:none;padding:6px;border-radius:6px;}
+#grain{pointer-events:none;position:fixed;width:100%;height:100%;background-image:url("https://grainy-gradients.vercel.app/noise.svg");opacity:0.2;mix-blend-mode:overlay;}
+h1{font-size:24px;font-style:italic;text-shadow:2px 2px 5px #F41B80D6;transition:opacity 0.5s ease;}
+h1.hidden-ui{opacity:0;pointer-events:none;}
+.scanlines::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(to bottom,rgba(255,255,255,0.05),rgba(255,255,255,0.05) 1px,transparent 2px,transparent 4px);pointer-events:none;}
+.glitch{animation:glitch 0.2s infinite;}
+@keyframes glitch{0%{transform:translate(2px,-2px)}50%{transform:translate(-2px,2px)}100%{transform:translate(0)}}
+.pad{padding:8px 14px;background:radial-gradient(circle at center,#00E6FF,#FF0190);border-radius:10px;cursor:pointer;font-weight:bold;}
+#padArea{position:absolute;bottom:-10%;left:50%;transform:translateX(-50%);display:flex;gap:10px;flex-wrap:wrap;z-index:5;padding:20px;transition:opacity 0.5s ease;}
+#padArea.hidden-ui{opacity:0;pointer-events:none;}
+.fantasy{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:60px;font-weight:bold;animation:pop 6s forwards;pointer-events:none;}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.4)}60%{transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.2)}}
+#beatFlash{pointer-events:none;position:fixed;inset:0;background:white;opacity:0;mix-blend-mode:overlay;z-index:50;transition:opacity 0.05s ease-out;}
+#beatIndicator{position:fixed;top:20px;right:20px;width:20px;height:20px;border-radius:50%;background:#333;border:2px solid #fff;z-index:100;transition:background 0.1s,box-shadow 0.1s,opacity 0.5s ease;}
+#beatIndicator.beating{background:#00ff88;box-shadow:0 0 20px #00ff88;}
+#beatIndicator.hidden-ui{opacity:0;}
+#immersionEye{position:fixed;top:20px;left:20px;width:44px;height:44px;border-radius:50%;background:rgba(7,11,64,0.85);border:2px solid rgba(255,255,255,0.3);cursor:pointer;z-index:200;display:flex;align-items:center;justify-content:center;font-size:20px;transition:all 0.3s ease;}
+#immersionEye:hover{background:rgba(0,230,255,0.3);border-color:#00E6FF;transform:scale(1.1);}
+#immersionEye.active{background:rgba(255,1,144,0.5);border-color:#FF0190;animation:eyePulse 2s infinite;}
+@keyframes eyePulse{0%,100%{box-shadow:0 0 5px #FF0190}50%{box-shadow:0 0 20px #FF0190,0 0 40px #FF0190}}
+#stage.immersion{width:100%;height:100%;right:0;border-radius:0;top:0;}
+#immersionHint{position:fixed;top:70px;left:20px;font-size:11px;color:rgba(255,255,255,0.5);z-index:200;pointer-events:none;opacity:1;transition:opacity 0.5s ease;}
+#immersionHint.hidden-ui{opacity:0;}
+hr{transition:opacity 0.5s ease;}hr.hidden-ui{opacity:0;}
+</style>
+</head>
+<body>
+<hr id="hr1"><hr id="hr2">
+<h1 id="title">🎥 ABSOLUTE VIDEO STUDIO 🎞️</h1>
+<div id="immersionEye" title="Toggle Immersion Mode">👁️</div>
+<div id="immersionHint">Click eye to hide UI</div>
+<div id="stage" class="scanlines">
+<video id="video" controls></video>
+<img id="slideshow">
+</div>
+<canvas id="visualizer"></canvas>
+<canvas id="exportCanvas" style="display:none"></canvas>
+<canvas id="recordCanvas" style="display:none"></canvas>
+<div id="grain"></div>
+<div id="beatFlash"></div>
+<div id="beatIndicator"></div>
+<div id="ui">
+<label for="videoUpload">🎞️ VIDEO IMPORT 🎬<input type="file" id="videoUpload" accept="video/*"></label>
+<label for="imageUpload">🖼️ IMAGE IMPORT 🌌<input type="file" id="imageUpload" accept="image/*" multiple></label>
+<label for="musicUpload">🎶 MUSIC IMPORT🎵<input type="file" id="musicUpload" accept="audio/*"></label>
+<select id="tone"><option value="none">Tone Normal</option><option value="cinema">Cinema</option><option value="warm">Warm</option><option value="cool">Cool</option><option value="vintage">Vintage</option></select>
+<select id="filter"><option value="none">Filter None</option><option value="grayscale">Grayscale</option><option value="sepia">Sepia</option><option value="invert">Invert</option><option value="auto">Auto Color</option></select>
+<button onclick="toggleRetro()">Retro</button>
+<button onclick="toggleGlitch()">Glitch</button>
+<select id="transition"><option value="zoom">Zoom Pop</option><option value="slide">Wave Slide</option><option value="spin">Spin Twist</option><option value="bounce">Bass Bounce</option></select>
+<button id="beatToggle">Beat FX</button>
+<button id="zoomBtn">Zoom</button>
+<button id="shakeBtn">Shake</button>
+<button id="tiltBtn">Tilt</button>
+<button id="addPad">Add Text Pad</button>
+<button id="recBtn">Start Recording</button>
+<button id="stopBtn">Stop</button>
+<button id="downloadBtn">Download</button>
+<button id="downloadBtn1">Download Frame</button>
+</div>
+<hr id="hr3"><hr id="hr4">
+<div id="padArea"></div>
+<script>
+const container=document.getElementById("stage");
+const video=document.getElementById("video");
+const slideshow=document.getElementById("slideshow");
+let canvas=document.getElementById("exportCanvas"),ctx=canvas.getContext("2d");
+const visualizer=document.getElementById("visualizer"),vctx=visualizer.getContext("2d");
+const recordCanvas=document.getElementById("recordCanvas"),rctx=recordCanvas.getContext("2d");
+const beatFlash=document.getElementById("beatFlash"),beatIndicator=document.getElementById("beatIndicator");
+const immersionEye=document.getElementById("immersionEye"),immersionHint=document.getElementById("immersionHint");
+const ui=document.getElementById("ui"),title=document.getElementById("title"),padArea=document.getElementById("padArea");
+visualizer.width=window.innerWidth;visualizer.height=60;
+recordCanvas.width=window.innerWidth;recordCanvas.height=window.innerHeight;
+
+let zoom=false,shake=false,tilt=false,beatEnabled=false;
+let images=[],imageUrls=[],slideIndex=0;
+let autoZoom=1,hue=0;
+let transitionType="zoom",transitionProgress=0;
+let currentTone="none",currentFilter="none";
+let audioCtx,analyser,dataArray;
+let music=new Audio();
+let recorder,chunks=[];
+let lastBeatTime=0,beatCooldown=280,beatHistory=[],isBeat=false;
+let slideshowBeatMode=false,slideshowTimer=null;
+let immersionMode=false;
+
+tone.onchange=e=>currentTone=e.target.value;
+filter.onchange=e=>currentFilter=e.target.value;
+transition.onchange=e=>transitionType=e.target.value;
+zoomBtn.onclick=()=>zoom=!zoom;
+shakeBtn.onclick=()=>shake=!shake;
+tiltBtn.onclick=()=>tilt=!tilt;
+
+beatToggle.onclick=()=>{
+  if(!beatEnabled){
+    beatEnabled=true;beatToggle.textContent="Beat FX: ON";beatToggle.style.background="#00ff88";beatToggle.style.color="#000";
+    slideshowBeatMode=false;
+    if(images.length>1&&!slideshowTimer)startSlideshowTimer();
+  }else if(beatEnabled&&!slideshowBeatMode){
+    slideshowBeatMode=true;beatToggle.textContent="Beat FX: BEAT MODE";beatToggle.style.background="#FF0190";beatToggle.style.color="#fff";
+    startSlideshowBeatMode();
+  }else{
+    beatEnabled=false;slideshowBeatMode=false;beatToggle.textContent="Beat FX";beatToggle.style.background="#070B40D6";beatToggle.style.color="#fff";
+    if(images.length>1)startSlideshowTimer();
+  }
+};
+
+immersionEye.onclick=()=>{
+  immersionMode=!immersionMode;
+  if(immersionMode){
+    ui.classList.add("hidden-ui");title.classList.add("hidden-ui");padArea.classList.add("hidden-ui");
+    beatIndicator.classList.add("hidden-ui");immersionHint.classList.add("hidden-ui");
+    document.getElementById("hr1").classList.add("hidden-ui");document.getElementById("hr2").classList.add("hidden-ui");
+    document.getElementById("hr3").classList.add("hidden-ui");document.getElementById("hr4").classList.add("hidden-ui");
+    container.classList.add("immersion");immersionEye.textContent="👁️‍🗨️";immersionEye.classList.add("active");immersionEye.title="Exit Immersion Mode";
+    visualizer.style.bottom="5%";visualizer.style.left="0";visualizer.style.opacity="0.5";
+  }else{
+    ui.classList.remove("hidden-ui");title.classList.remove("hidden-ui");padArea.classList.remove("hidden-ui");
+    beatIndicator.classList.remove("hidden-ui");immersionHint.classList.remove("hidden-ui");
+    document.getElementById("hr1").classList.remove("hidden-ui");document.getElementById("hr2").classList.remove("hidden-ui");
+    document.getElementById("hr3").classList.remove("hidden-ui");document.getElementById("hr4").classList.remove("hidden-ui");
+    container.classList.remove("immersion");immersionEye.textContent="👁️";immersionEye.classList.remove("active");immersionEye.title="Toggle Immersion Mode";
+    visualizer.style.bottom="35%";visualizer.style.left="16%";visualizer.style.opacity="0.78";
+  }
+};
+
+musicUpload.onchange=e=>{
+  let file=e.target.files[0];
+  music.src=URL.createObjectURL(file);
+  music.play();
+  if(!audioCtx){
+    audioCtx=new AudioContext();
+    let src=audioCtx.createMediaElementSource(music);
+    analyser=audioCtx.createAnalyser();
+    src.connect(analyser);analyser.connect(audioCtx.destination);
+    analyser.fftSize=256;analyser.smoothingTimeConstant=0.4;
+    dataArray=new Uint8Array(analyser.frequencyBinCount);
+  }
+};
+
+videoUpload.onchange=e=>{
+  let file=e.target.files[0];
+  video.src=URL.createObjectURL(file);
+  video.style.display="block";slideshow.style.display="none";
+};
+
+imageUpload.onchange=e=>{
+  images=[...e.target.files];
+  imageUrls=images.map(f=>URL.createObjectURL(f));
+  if(images.length>0){
+    slideIndex=0;showSlide();
+    if(images.length>1)startSlideshowTimer();
+  }
+};
+
+function showSlide(){
+  if(imageUrls.length===0)return;
+  slideshow.src=imageUrls[slideIndex];
+  video.style.display="none";slideshow.style.display="block";
+  transitionProgress=1;
+}
+function nextSlide(){
+  if(imageUrls.length===0)return;
+  slideIndex=(slideIndex+1)%imageUrls.length;
+  showSlide();
+}
+function startSlideshowTimer(){
+  slideshowBeatMode=false;
+  if(slideshowTimer)clearInterval(slideshowTimer);
+  slideshowTimer=setInterval(()=>{if(!slideshowBeatMode)nextSlide();},6000);
+}
+function startSlideshowBeatMode(){
+  slideshowBeatMode=true;
+  if(slideshowTimer){clearInterval(slideshowTimer);slideshowTimer=null;}
+}
+
+function toggleRetro(){container.classList.toggle("scanlines");}
+function toggleGlitch(){container.classList.toggle("glitch");}
+
+function getTone(){
+  switch(currentTone){
+    case"cinema":return"contrast(125%) saturate(128%) brightness(105%)";
+    case"warm":return"sepia(30%) saturate(140%)";
+    case"cool":return"hue-rotate(200deg)";
+    case"vintage":return"sepia(35%) contrast(115%) brightness(95%)";
+    default:return"";
+  }
+}
+function getFilter(){
+  switch(currentFilter){
+    case"grayscale":return"grayscale(100%)";
+    case"sepia":return"sepia(100%)";
+    case"invert":return"invert(100%)";
+    case"auto":hue+=1;return`hue-rotate(${hue}deg)`;
+    default:return"";
+  }
+}
+
+addPad.onclick=()=>{
+  let txt=prompt("Text");if(!txt)return;
+  let pad=document.createElement("div");pad.className="pad";pad.textContent=txt;
+  pad.onclick=()=>{
+    let t=document.createElement("div");t.className="fantasy";t.textContent=txt;
+    t.style.color=`hsl(${Math.random()*360},70%,50%)`;
+    document.body.appendChild(t);setTimeout(()=>t.remove(),2000);
+  };
+  padArea.appendChild(pad);
+};
+
+recBtn.onclick=()=>{
+  let stream=recordCanvas.captureStream(30);
+  recorder=new MediaRecorder(stream);
+  recorder.ondataavailable=e=>chunks.push(e.data);
+  recorder.start();
+};
+stopBtn.onclick=()=>recorder.stop();
+downloadBtn.onclick=()=>{
+  let blob=new Blob(chunks,{type:"video/webm"}),url=URL.createObjectURL(blob);
+  let a=document.createElement("a");a.href=url;a.download="hollywood_studio.webm";a.click();
+};
+
+function detectBeat(){
+  if(!analyser||!dataArray)return 0;
+  analyser.getByteFrequencyData(dataArray);
+  // Bass energy: first 8 bins = kick drum range
+  let bassSum=0,bassBins=Math.min(8,dataArray.length);
+  for(let i=0;i<bassBins;i++)bassSum+=dataArray[i];
+  let bassAvg=bassSum/bassBins;
+  // Also get mid energy for comparison
+  let midSum=0;
+  for(let i=8;i<Math.min(20,dataArray.length);i++)midSum+=dataArray[i];
+  let midAvg=midSum/Math.max(1,Math.min(20,dataArray.length)-8);
+  // Beat history for dynamic threshold
+  beatHistory.push(bassAvg);
+  if(beatHistory.length>50)beatHistory.shift();
+  let historyAvg=beatHistory.reduce((a,b)=>a+b,0)/beatHistory.length;
+  // More sensitive threshold
+  let threshold=historyAvg*1.15+10;
+  let now=Date.now();
+  isBeat=false;
+  // Beat: bass significantly above threshold, and louder than mids (kick drum characteristic)
+  if(bassAvg>threshold&&bassAvg>35&&bassAvg>midAvg*1.2&&(now-lastBeatTime)>beatCooldown){
+    let recentSlice=beatHistory.slice(-6,-1);
+    let recentMax=recentSlice.length>0?Math.max(...recentSlice):0;
+    if(bassAvg>=recentMax*0.85){
+      isBeat=true;lastBeatTime=now;
+      if(beatEnabled){
+        beatFlash.style.opacity=Math.min(bassAvg/180,0.5);
+        setTimeout(()=>beatFlash.style.opacity=0,100);
+        beatIndicator.classList.add("beating");
+        setTimeout(()=>beatIndicator.classList.remove("beating"),120);
+      }
+      if(slideshowBeatMode&&images.length>1)nextSlide();
+    }
+  }
+  return bassAvg;
+}
+
+function render(){
+  requestAnimationFrame(render);
+  let target=video.style.display==="block"?video:slideshow;
+  let beatPower=detectBeat();
+  autoZoom=1+Math.sin(Date.now()/2000)*0.05;
+  let shakeX=shake?(Math.random()-.5)*10:0,shakeY=shake?(Math.random()-.5)*10:0;
+  let tiltX=tilt?Math.sin(Date.now()/600)*10:0,tiltY=tilt?Math.cos(Date.now()/700)*10:0;
+  if(transitionProgress>0)transitionProgress-=0.03;
+  let scale=0.8,rot=0,tx=0,ty=0;
+  if(transitionType==="zoom")scale=0.8+transitionProgress;
+  if(transitionType==="slide")tx=transitionProgress*300;
+  if(transitionType==="spin")rot=transitionProgress*5;
+  if(transitionType==="bounce")ty=Math.sin(Date.now()/200)*beatPower/3;
+  // STRONG beat zoom for video and slideshow
+  let beatZoom=1;
+  if(beatEnabled&&isBeat)beatZoom=1+(beatPower/150);
+  let continuousBeatZoom=1;
+  if(beatEnabled&&beatPower>25)continuousBeatZoom=1+(beatPower/400);
+  target.style.transform=`translate(${tx+shakeX}px,${ty+shakeY}px) rotate(${rot}deg) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${(zoom?1.2:1)*autoZoom*scale*beatZoom*continuousBeatZoom})`;
+  target.style.filter=getTone()+" "+getFilter();
+  if(analyser){
+    vctx.clearRect(0,0,visualizer.width,visualizer.height);
+    let barWidth=visualizer.width/dataArray.length;
+    for(let i=0;i<dataArray.length;i++){
+      let h=dataArray[i]/2;
+      vctx.fillStyle=`hsl(${i*5},100%,50%)`;
+      vctx.fillRect(i*barWidth,visualizer.height-h,barWidth-2,h);
+    }
+  }
+  rctx.clearRect(0,0,recordCanvas.width,recordCanvas.height);
+  rctx.drawImage(target,recordCanvas.width/2-target.width/2,recordCanvas.height/2-target.height/2);
+  rctx.drawImage(visualizer,0,recordCanvas.height-60);
+}
+render();
+
+downloadBtn1.onclick=()=>{
+  let target=video.src?video:slideshow;
+  canvas.width=target.videoWidth||target.naturalWidth;
+  canvas.height=target.videoHeight||target.naturalHeight;
+  ctx.filter=target.style.filter;
+  ctx.drawImage(target,0,0,canvas.width,canvas.height);
+  let link=document.createElement("a");link.download="studio-export.png";link.href=canvas.toDataURL();link.click();
+};
+</script>
+</body>
+</html>
